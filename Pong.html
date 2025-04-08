@@ -1,0 +1,153 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Pong Game</title>
+    <style>
+        body {
+            background: black;
+            margin: 0;
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            justify-content: center;
+            height: 100vh;
+        }
+        .scoreboard {
+            text-align: center;
+            font-family: Arial, sans-serif;
+            color: white;
+            font-size: 24px;
+            margin-bottom: 10px;
+        }
+        canvas {
+            background: black;
+            border: 2px solid white;
+        }
+    </style>
+</head>
+<body>
+    <div class="scoreboard">
+        <span id="player1-score">0</span> : <span id="player2-score">0</span>
+    </div>
+    <canvas id="pong" width="800" height="400"></canvas>
+    <script>
+        const canvas = document.getElementById("pong");
+        const ctx = canvas.getContext("2d");
+
+        const player1ScoreElem = document.getElementById("player1-score");
+        const player2ScoreElem = document.getElementById("player2-score");
+
+        let player1Score = 0;
+        let player2Score = 0;
+
+        class Paddle {
+            constructor(x, y, width, height, color) {
+                this.x = x;
+                this.y = y;
+                this.width = width;
+                this.height = height;
+                this.color = color;
+                this.speed = 5; // Reduced speed for smoother movement
+            }
+            draw() {
+                ctx.fillStyle = this.color;
+                ctx.fillRect(this.x, this.y, this.width, this.height);
+            }
+            autoMove(ball) {
+                const targetY = ball.y - this.height / 2;
+                this.y += (targetY - this.y) * 0.1; // Smooth movement toward the target
+            }
+            followMouse(mouseY) {
+                const paddleCenterOffset = this.height / 2;
+                this.y = Math.max(0, Math.min(canvas.height - this.height, mouseY - paddleCenterOffset));
+            }
+        }
+
+        class Ball {
+            constructor(x, y, radius, color) {
+                this.x = x;
+                this.y = y;
+                this.radius = radius;
+                this.color = color;
+                this.dx = 4;
+                this.dy = 4;
+                this.speedIncrement = 0.5;
+                this.baseSpeed = 4;
+            }
+            draw() {
+                ctx.shadowBlur = 10;
+                ctx.shadowColor = this.color;
+                ctx.fillStyle = this.color;
+                ctx.beginPath();
+                ctx.arc(this.x, this.y, this.radius, 0, Math.PI * 2);
+                ctx.fill();
+                ctx.closePath();
+                ctx.shadowBlur = 0;
+            }
+            update(paddle1, paddle2) {
+                this.x += this.dx;
+                this.y += this.dy;
+
+                if (this.y - this.radius <= 0 || this.y + this.radius >= canvas.height) {
+                    this.dy = -this.dy;
+                }
+
+                if (
+                    (this.x - this.radius < paddle1.x + paddle1.width &&
+                        this.y > paddle1.y &&
+                        this.y < paddle1.y + paddle1.height) ||
+                    (this.x + this.radius > paddle2.x &&
+                        this.y > paddle2.y &&
+                        this.y < paddle2.y + paddle2.height)
+                ) {
+                    this.dx = this.dx > 0 ? this.dx + this.speedIncrement : this.dx - this.speedIncrement;
+                    this.dy = this.dy > 0 ? this.dy + this.speedIncrement : this.dy - this.speedIncrement;
+                    this.dx = -this.dx; 
+                }
+
+                if (this.x - this.radius < 0) {
+                    player2Score++;
+                    player2ScoreElem.textContent = player2Score;
+                    this.reset();
+                }
+
+                if (this.x + this.radius > canvas.width) {
+                    player1Score++;
+                    player1ScoreElem.textContent = player1Score;
+                    this.reset();
+                }
+            }
+            reset() {
+                this.x = canvas.width / 2;
+                this.y = canvas.height / 2;
+                this.dx = this.baseSpeed;
+                this.dy = this.baseSpeed * (Math.random() < 0.5 ? 1 : -1);
+            }
+        }
+
+        const paddle1 = new Paddle(10, canvas.height / 2 - 50, 10, 100, "white");
+        const paddle2 = new Paddle(canvas.width - 20, canvas.height / 2 - 50, 10, 100, "white");
+        const ball = new Ball(canvas.width / 2, canvas.height / 2, 10, "white");
+
+        canvas.addEventListener("mousemove", (e) => {
+            const rect = canvas.getBoundingClientRect();
+            const mouseY = e.clientY - rect.top;
+            paddle1.followMouse(mouseY);
+        });
+
+        function gameLoop() {
+            ctx.clearRect(0, 0, canvas.width, canvas.height);
+            paddle1.draw();
+            paddle2.draw();
+            paddle2.autoMove(ball);
+            ball.draw();
+            ball.update(paddle1, paddle2);
+            requestAnimationFrame(gameLoop);
+        }
+
+        gameLoop();
+    </script>
+</body>
+</html>
